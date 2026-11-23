@@ -107,7 +107,9 @@
 const $ = s => document.querySelector(s);
 const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props || {}); kids.forEach(k => e.append(k)); return e; };
 const LIMIT = 6, MAX_MB = 70;
+const DEFAULTS = { owner: 'akramaakrama', repo: 'shorts-engine', branch: 'main' };
 let S = {}; try { S = JSON.parse(localStorage.getItem('su_settings') || '{}'); } catch (e) {}
+S = Object.assign({}, DEFAULTS, S);
 let channels = [], used = {}, poller = null;
 
 function base(){ return `https://api.github.com/repos/${S.owner}/${S.repo}`; }
