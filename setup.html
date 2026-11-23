@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pembuat Secret Channel</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#667085;--line:#e3e6eb;--accent:#e0245e}
+  @media (prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--text:#eceff3;--muted:#98a1b0;--line:#2d323b;--accent:#ff4d85}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  h1{font-size:22px;margin:8px 0 2px}
+  .sub,.hint{color:var(--muted)}
+  .hint{font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-weight:600;margin:10px 0 4px}
+  input,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
+  textarea{min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:560px){.row{grid-template-columns:1fr}}
+  button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer;margin-right:8px;margin-top:8px}
+  button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pembuat Secret Channel</h1>
+  <p class="sub">Isi data tiap channel, lalu salin dua hasil di bawah. Semua diproses di browser kamu dan tidak dikirim ke mana pun.</p>
+  <div id="list"></div>
+  <button class="ghost" id="add">+ Tambah channel</button>
+  <button id="make">Buat hasil</button>
+
+  <div class="card" style="margin-top:16px">
+    <label for="out1">1) Isi untuk GitHub Secret bernama CHANNELS_SECRET (rahasia, jangan dibagikan)</label>
+    <textarea id="out1" readonly></textarea>
+    <button class="ghost" data-copy="out1">Salin</button>
+    <label for="out2" style="margin-top:18px">2) Isi untuk file config/channels.json (tidak rahasia)</label>
+    <textarea id="out2" readonly style="min-height:90px"></textarea>
+    <button class="ghost" data-copy="out2">Salin</button>
+    <p class="hint" id="msg"></p>
+  </div>
+</div>
+<script>
+const list = document.getElementById('list');
+function addRow(v){
+  v = v || {};
+  const d = document.createElement('div'); d.className = 'card';
+  d.innerHTML = `
+    <div class="row">
+      <div><label>ID (huruf kecil/angka, tanpa spasi)</label><input data-k="id" placeholder="channel1"></div>
+      <div><label>Nama tampilan</label><input data-k="name" placeholder="Channel Kuliner"></div>
+    </div>
+    <div class="row">
+      <div><label>Client ID</label><input data-k="client_id" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off"></div>
+      <div><label>Client Secret</label><input data-k="client_secret" autocomplete="off"></div>
+    </div>
+    <label>Refresh Token</label><input data-k="refresh_token" placeholder="1//0g..." autocomplete="off">
+    <button class="ghost" data-del>Hapus channel ini</button>`;
+  d.querySelectorAll('input').forEach(i => i.value = v[i.dataset.k] || '');
+  d.querySelector('[data-del]').onclick = () => d.remove();
+  list.append(d);
+}
+addRow(); addRow();
+document.getElementById('add').onclick = () => addRow();
+document.getElementById('make').onclick = () => {
+  const sec = {}, pub = [], msg = document.getElementById('msg'); msg.textContent = '';
+  for (const d of list.children) {
+    const g = k => d.querySelector(`[data-k="${k}"]`).value.trim();
+    if (!g('id') && !g('client_id') && !g('refresh_token')) continue;
+    if (!/^[a-z0-9_-]+$/.test(g('id'))) return msg.textContent = 'ID harus huruf kecil/angka/strip, tanpa spasi: "' + g('id') + '"';
+    if (!g('client_id') || !g('client_secret') || !g('refresh_token')) return msg.textContent = 'Data channel "' + g('id') + '" belum lengkap.';
+    if (sec[g('id')]) return msg.textContent = 'ID dobel: ' + g('id');
+    sec[g('id')] = { client_id: g('client_id'), client_secret: g('client_secret'), refresh_token: g('refresh_token') };
+    pub.push({ id: g('id'), name: g('name') || g('id') });
+  }
+  if (!pub.length) return msg.textContent = 'Isi minimal satu channel.';
+  document.getElementById('out1').value = JSON.stringify(sec);
+  document.getElementById('out2').value = JSON.stringify(pub, null, 2);
+  msg.textContent = 'Selesai. Salin keduanya sesuai petunjuk di PANDUAN.md.';
+};
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
+  const t = document.getElementById(b.dataset.copy); t.select();
+  try { await navigator.clipboard.writeText(t.value); b.textContent = 'Tersalin'; setTimeout(() => b.textContent = 'Salin', 1500); } catch (e) { document.execCommand('copy'); }
+});
+</script>
+</body>
+</html>

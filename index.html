@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shorts Uploader</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#667085;--line:#e3e6eb;--accent:#e0245e;--ok:#12805c;--err:#c0352b;--warn:#a15c07}
+  @media (prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--text:#eceff3;--muted:#98a1b0;--line:#2d323b;--accent:#ff4d85;--ok:#4ec9a0;--err:#ff7a70;--warn:#f0b35a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  h1{font-size:22px;margin:8px 0 2px}
+  .sub{color:var(--muted);margin:0 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-weight:600;margin:12px 0 4px}
+  label:first-child{margin-top:0}
+  input[type=text],input[type=password],textarea,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
+  textarea{min-height:70px;resize:vertical}
+  input[type=file]{width:100%}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:560px){.row{grid-template-columns:1fr}}
+  button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .big{width:100%;font-size:17px;padding:14px}
+  .hint{color:var(--muted);font-size:13px;margin-top:4px}
+  .warn{color:var(--warn)}
+  .ch{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+  .ch.off .fields{display:none}
+  .ch-head{display:flex;align-items:center;gap:10px}
+  .ch-head input{width:20px;height:20px}
+  .ch-head b{flex:1}
+  .badge{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+  .badge.full{color:var(--err);border-color:var(--err)}
+  .fields{margin-top:10px}
+  .bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:8px}
+  .bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .st{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .st:last-child{border-bottom:0}
+  .ok{color:var(--ok)}.err{color:var(--err)}
+  a{color:var(--accent)}
+  details summary{cursor:pointer;font-weight:600}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Shorts Uploader</h1>
+  <p class="sub">Satu video, satu klik, terkirim ke semua channel.</p>
+
+  <details class="card" id="settings">
+    <summary>Pengaturan koneksi GitHub</summary>
+    <label for="owner">Username / organisasi GitHub</label>
+    <input type="text" id="owner" placeholder="contoh: budi123" autocomplete="off">
+    <label for="repo">Nama repo mesin upload (yang privat)</label>
+    <input type="text" id="repo" placeholder="contoh: shorts-engine" autocomplete="off">
+    <label for="token">Token akses GitHub</label>
+    <input type="password" id="token" placeholder="github_pat_..." autocomplete="off">
+    <p class="hint">Token hanya disimpan di browser ini dan hanya dikirim ke api.github.com. Buatnya sesuai PANDUAN.md.</p>
+    <p><button id="saveSettings">Simpan dan hubungkan</button></p>
+    <p class="hint" id="connMsg"></p>
+  </details>
+
+  <div class="card" id="mainForm">
+    <label for="video">Video Shorts</label>
+    <input type="file" id="video" accept="video/*">
+    <p class="hint" id="videoInfo">Vertikal (9:16), durasi di bawah 3 menit, maksimal 70 MB.</p>
+
+    <label for="title">Judul utama</label>
+    <input type="text" id="title" maxlength="100" placeholder="Judul video">
+    <label for="desc">Deskripsi utama</label>
+    <textarea id="desc" placeholder="Deskripsi video"></textarea>
+    <div class="row">
+      <div>
+        <label for="tags">Tag (pisah koma)</label>
+        <input type="text" id="tags" placeholder="shorts, lucu, tips">
+      </div>
+      <div>
+        <label for="privacy">Status video</label>
+        <select id="privacy">
+          <option value="private">Private (aman untuk uji coba)</option>
+          <option value="unlisted">Unlisted</option>
+          <option value="public">Public</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint">Tag #Shorts ditambahkan otomatis ke deskripsi jika belum ada.</p>
+
+    <h3 style="margin:18px 0 0">Channel tujuan</h3>
+    <p class="hint">Judul dan deskripsi tiap channel bisa diubah supaya tidak sama persis. Itu mengurangi risiko dianggap konten duplikat.</p>
+    <div id="channels"><p class="hint">Hubungkan GitHub dulu di pengaturan.</p></div>
+
+    <p style="margin-top:16px"><button class="big" id="go" disabled>Upload ke semua</button></p>
+    <div class="bar hidden" id="bar"><i></i></div>
+    <p class="hint" id="goMsg"></p>
+  </div>
+
+  <div class="card hidden" id="statusCard">
+    <b>Status upload</b>
+    <p class="hint" id="statusMsg"></p>
+    <div id="statusList"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props || {}); kids.forEach(k => e.append(k)); return e; };
+const LIMIT = 6, MAX_MB = 70;
+let S = {}; try { S = JSON.parse(localStorage.getItem('su_settings') || '{}'); } catch (e) {}
+let channels = [], used = {}, poller = null;
+
+function base(){ return `https://api.github.com/repos/${S.owner}/${S.repo}`; }
+function headers(extra){ return Object.assign({ 'Authorization': 'Bearer ' + S.token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, extra || {}); }
+
+async function getRaw(path){
+  const r = await fetch(`${base()}/contents/${path}?ref=${S.branch || 'main'}&t=${Date.now()}`, { headers: headers({ 'Accept': 'application/vnd.github.raw+json' }), cache: 'no-store' });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(r.status === 401 ? 'Token ditolak (salah atau kedaluwarsa)' : r.status === 403 ? 'Token tidak punya izin ke repo ini' : 'GitHub error ' + r.status);
+  return r.text();
+}
+
+function putFile(path, b64, message, onProgress){
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('PUT', `${base()}/contents/${path}`);
+    const h = headers({ 'Content-Type': 'application/json' });
+    Object.keys(h).forEach(k => x.setRequestHeader(k, h[k]));
+    x.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+    x.onload = () => {
+      if (x.status < 300) return resolve();
+      let m = ''; try { m = JSON.parse(x.responseText).message; } catch (e) {}
+      reject(new Error(`GitHub ${x.status}: ${m}`));
+    };
+    x.onerror = () => reject(new Error('Koneksi gagal'));
+    x.send(JSON.stringify({ message, content: b64, branch: S.branch || 'main' }));
+  });
+}
+
+function fileToB64(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = () => reject(new Error('Gagal membaca file'));
+    fr.readAsDataURL(file);
+  });
+}
+const textToB64 = t => btoa(unescape(encodeURIComponent(t)));
+const ptToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
+async function connect(){
+  $('#connMsg').textContent = 'Menghubungkan...';
+  try {
+    const ch = await getRaw('config/channels.json');
+    if (!ch) throw new Error('File config/channels.json tidak ditemukan di repo');
+    channels = JSON.parse(ch).filter(c => /^[a-z0-9_-]+$/.test(c.id));
+    const q = await getRaw('state/quota.json');
+    used = {};
+    if (q) { const j = JSON.parse(q); if (j.date === ptToday()) used = j.counts || {}; }
+    renderChannels();
+    $('#go').disabled = false;
+    $('#connMsg').textContent = `Terhubung. ${channels.length} channel dimuat.`;
+    $('#settings').open = false;
+  } catch (e) {
+    $('#connMsg').textContent = 'Gagal: ' + e.message;
+    $('#go').disabled = true;
+  }
+}
+
+function renderChannels(){
+  const box = $('#channels'); box.innerHTML = '';
+  channels.forEach(c => {
+    const n = used[c.id] || 0, full = n >= LIMIT;
+    const cb = el('input', { type: 'checkbox', id: 'use-' + c.id, checked: !full });
+    const badge = el('span', { className: 'badge' + (full ? ' full' : ''), textContent: `kuota ${n}/${LIMIT} hari ini` });
+    const t = el('input', { type: 'text', id: 't-' + c.id, maxLength: 100, placeholder: 'Judul channel ini' });
+    const d = el('textarea', { id: 'd-' + c.id, placeholder: 'Deskripsi channel ini' });
+    [t, d].forEach(i => i.addEventListener('input', () => i.dataset.dirty = '1'));
+    const wrap = el('div', { className: 'ch' + (cb.checked ? '' : ' off') },
+      el('div', { className: 'ch-head' }, cb, el('b', { textContent: c.name || c.id }), badge),
+      el('div', { className: 'fields' }, el('label', { textContent: 'Judul' }), t, el('label', { textContent: 'Deskripsi' }), d));
+    cb.addEventListener('change', () => wrap.classList.toggle('off', !cb.checked));
+    box.append(wrap);
+  });
+  syncMaster();
+}
+
+function syncMaster(){
+  channels.forEach(c => {
+    const t = $('#t-' + c.id), d = $('#d-' + c.id);
+    if (t && !t.dataset.dirty) t.value = $('#title').value;
+    if (d && !d.dataset.dirty) d.value = $('#desc').value;
+  });
+}
+$('#title').addEventListener('input', syncMaster);
+$('#desc').addEventListener('input', syncMaster);
+
+$('#video').addEventListener('change', () => {
+  const f = $('#video').files[0], info = $('#videoInfo');
+  info.className = 'hint';
+  if (!f) return;
+  const mb = f.size / 1048576;
+  const v = document.createElement('video'); v.preload = 'metadata';
+  v.onloadedmetadata = () => {
+    const warns = [];
+    if (mb > MAX_MB) warns.push(`file ${mb.toFixed(1)} MB melebihi batas ${MAX_MB} MB`);
+    if (v.duration >= 180) warns.push('durasi 3 menit atau lebih, tidak akan dihitung sebagai Shorts');
+    if (v.videoWidth >= v.videoHeight) warns.push('video tidak vertikal, tidak akan dihitung sebagai Shorts');
+    info.textContent = `${v.videoWidth}x${v.videoHeight}, ${Math.round(v.duration)} detik, ${mb.toFixed(1)} MB` + (warns.length ? '. Peringatan: ' + warns.join('; ') : '. Siap.');
+    if (warns.length) info.className = 'hint warn';
+    URL.revokeObjectURL(v.src);
+  };
+  v.onerror = () => { info.textContent = `${mb.toFixed(1)} MB (info video tidak terbaca)`; };
+  v.src = URL.createObjectURL(f);
+});
+
+$('#saveSettings').addEventListener('click', () => {
+  S = { owner: $('#owner').value.trim(), repo: $('#repo').value.trim(), token: $('#token').value.trim(), branch: 'main' };
+  if (!S.owner || !S.repo || !S.token) { $('#connMsg').textContent = 'Isi ketiga kolom dulu.'; return; }
+  try { localStorage.setItem('su_settings', JSON.stringify(S)); } catch (e) {}
+  connect();
+});
+
+$('#go').addEventListener('click', async () => {
+  const msg = $('#goMsg'), bar = $('#bar'), fill = bar.firstElementChild, btn = $('#go');
+  const file = $('#video').files[0];
+  if (!file) return msg.textContent = 'Pilih video dulu.';
+  if (file.size > MAX_MB * 1048576) return msg.textContent = `Video melebihi ${MAX_MB} MB. Kecilkan dulu ukurannya.`;
+  const chosen = channels.filter(c => $('#use-' + c.id).checked);
+  if (!chosen.length) return msg.textContent = 'Centang minimal satu channel.';
+  const jobCh = {};
+  for (const c of chosen) {
+    const title = $('#t-' + c.id).value.trim();
+    if (!title) return msg.textContent = `Judul untuk ${c.name || c.id} masih kosong.`;
+    jobCh[c.id] = { title, description: $('#d-' + c.id).value };
+  }
+  const id = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + '-' + Math.random().toString(36).slice(2, 6);
+  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+  const videoPath = `videos/${id}.${ext}`;
+  const job = { id, video: videoPath, privacy: $('#privacy').value, tags: $('#tags').value.split(',').map(s => s.trim()).filter(Boolean), channels: jobCh };
+
+  btn.disabled = true; bar.classList.remove('hidden'); fill.style.width = '0';
+  try {
+    msg.textContent = 'Membaca video...';
+    const b64 = await fileToB64(file);
+    msg.textContent = 'Mengirim video ke GitHub (bisa 1-2 menit, jangan tutup halaman)...';
+    await putFile(videoPath, b64, 'video ' + id, p => fill.style.width = Math.round(p * 100) + '%');
+    msg.textContent = 'Membuat tugas upload...';
+    await putFile(`jobs/${id}.json`, textToB64(JSON.stringify(job, null, 2)), 'job ' + id);
+    fill.style.width = '100%';
+    msg.textContent = 'Terkirim. GitHub Actions sedang memproses, pantau di kartu status di bawah.';
+    watch(id, chosen);
+  } catch (e) {
+    msg.textContent = 'Gagal: ' + e.message;
+  } finally { btn.disabled = false; }
+});
+
+function watch(id, chosen){
+  const card = $('#statusCard'), list = $('#statusList'), sm = $('#statusMsg');
+  card.classList.remove('hidden'); list.innerHTML = '';
+  const rows = {};
+  chosen.forEach(c => {
+    const s = el('span', { textContent: 'Menunggu...' });
+    rows[c.id] = s; list.append(el('div', { className: 'st' }, el('span', { textContent: c.name || c.id }), s));
+  });
+  sm.innerHTML = `Proses biasanya 2-6 menit. Detail teknis: <a target="_blank" rel="noopener" href="https://github.com/${S.owner}/${S.repo}/actions">halaman Actions</a>.`;
+  clearInterval(poller);
+  const started = Date.now();
+  poller = setInterval(async () => {
+    try {
+      const t = await getRaw(`results/${id}.json`);
+      if (t) {
+        const r = JSON.parse(t);
+        Object.keys(r.channels).forEach(cid => {
+          const x = r.channels[cid], s = rows[cid]; if (!s) return;
+          s.innerHTML = '';
+          if (x.status === 'ok') { s.className = 'ok'; s.append('Berhasil: ', el('a', { href: x.url, target: '_blank', rel: 'noopener', textContent: 'buka video' })); }
+          else { s.className = 'err'; s.textContent = (x.status === 'skipped' ? 'Dilewati: ' : 'Gagal: ') + x.error; }
+        });
+        clearInterval(poller);
+        sm.textContent = 'Selesai.';
+        connect();
+      } else if (Date.now() - started > 30 * 60 * 1000) {
+        clearInterval(poller); sm.textContent = 'Belum ada hasil setelah 30 menit. Cek halaman Actions di GitHub.';
+      }
+    } catch (e) { sm.textContent = 'Gagal cek status: ' + e.message; }
+  }, 8000);
+}
+
+$('#owner').value = S.owner || ''; $('#repo').value = S.repo || ''; $('#token').value = S.token || '';
+if (S.owner && S.repo && S.token) { $('#settings').open = false; connect(); } else { $('#settings').open = true; }
+</script>
+</body>
+</html>
